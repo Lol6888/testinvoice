@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Onetwentysix Verse — Invoice Builder (A4 Print Fixed)</title>
+<title>Onetwentysix Verse — Invoice Builder (v2)</title>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
@@ -12,7 +12,7 @@
   --ink:#2b1a4a; --rule:#3b275f; --paper:#faf6f1; --sheet:#fdfaf7;
   --accent:#ff6f61; --circle:#efdccf; --paybg:#efe8dc; --payborder:#dccfbb;
   --tbl-bg:#f7f3ed; --tbl-border:#e4dbce; --tbl-zebra1:#fcfaf8; --tbl-zebra2:#f8f5f0;
-  --brand:#2b1a4a; --ok:#16a34a; --muted:#6b7280;
+  --brand:#2b1a4a; --muted:#6b7280;
 }
 
 /* ===== Base / Builder ===== */
@@ -48,7 +48,7 @@ button.danger{background:#fff;color:#c0392b;border:1px solid #f1d6d3}
 .item-row .del{background:#fff;color:#c0392b;border:1px solid #f1d6d3}
 .add-row{background:#fff;color:var(--brand);border:1px dashed #d7cabc}
 
-/* ===== Payment Method Cards ===== */
+/* ===== Payment Method Cards (select & manage) ===== */
 .pm-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
 .pm-card{
   border:1px solid #e7e1d8;border-radius:12px;background:#fff;padding:12px;display:flex;gap:10px;align-items:flex-start
@@ -111,9 +111,16 @@ button.danger{background:#fff;color:#c0392b;border:1px solid #f1d6d3}
 .payment-box h3{margin:0 0 14px;font-size:18px;font-weight:800}
 .payment-grid{display:grid;grid-template-columns:1.3fr .7fr;gap:22px;align-items:start}
 .pay-col h4{margin:4px 0 10px;font-size:15px;font-weight:700}
-.banklines{margin:0;white-space:pre-wrap;font-size:14px}
 
-/* ==== Multi-QR layout (review) ==== */
+/* Bank boxes in review */
+.bank-list{display:grid;grid-template-columns:1fr;gap:10px}
+.bank-card{
+  background:#fff;border:1px solid var(--payborder);border-radius:10px;padding:10px 12px
+}
+.bank-card .bank-title{font-weight:800;margin:0 0 6px}
+.bank-card .bank-meta{white-space:pre-wrap;font-size:13px;line-height:1.5}
+
+/* QR grid in review */
 .qr-list{display:grid;grid-template-columns: repeat(auto-fill, minmax(120px,1fr));gap:12px}
 .qr-card{background:#fff;border:1px dashed var(--payborder);border-radius:12px;padding:8px;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .qr-card img{width:100%;aspect-ratio:1/1;object-fit:contain;border-radius:8px}
@@ -216,7 +223,7 @@ button.danger{background:#fff;color:#c0392b;border:1px solid #f1d6d3}
       <div><label>Wish (footer line 2)</label><input id="inpNote2" type="text" value="We wish you continued success and growth — let’s build something remarkable together!"></div>
     </div>
 
-    <!-- ========== PAYMENT METHODS: list of cards + add form ========== -->
+    <!-- ========== PAYMENT METHODS: cards + add/edit form ========== -->
     <div style="margin-top:12px">
       <label>Payment Methods (tick to show in invoice)</label>
       <div id="pmList" class="pm-list"></div>
@@ -224,7 +231,7 @@ button.danger{background:#fff;color:#c0392b;border:1px solid #f1d6d3}
 
     <div style="margin-top:12px;border:1px dashed #d7cabc;border-radius:12px;padding:12px;background:#fff">
       <div class="row" style="justify-content:space-between;align-items:center">
-        <strong>+ Add New Method</strong>
+        <strong id="formTitle">+ Add New Method</strong>
         <span class="small" id="addStatus" style="color:var(--muted)"></span>
       </div>
       <div class="row">
@@ -259,6 +266,7 @@ button.danger{background:#fff;color:#c0392b;border:1px solid #f1d6d3}
 
       <div class="row" style="margin-top:8px">
         <button id="btnAddMethod">Add Method</button>
+        <button id="btnCancelEdit" class="ghost" style="display:none">Cancel</button>
         <button class="ghost" id="btnExportData">⬇️ Export JSON</button>
         <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
           ⬆️ Import JSON
@@ -329,12 +337,12 @@ button.danger{background:#fff;color:#c0392b;border:1px solid #f1d6d3}
     <div class="payment-grid">
       <div class="pay-col">
         <h4>Bank Transfer / Methods</h4>
-        <pre id="invPaymentText" class="banklines"></pre>
+        <div id="invBankList" class="bank-list"></div>
       </div>
       <div class="pay-col">
         <h4>QR (Scan to Pay)</h4>
         <div id="invQRList" class="qr-list"></div>
-        <p class="note">Open app/camera to scan QR.</p>
+        <p class="small" style="margin-top:6px">Open app/camera to scan QR.</p>
       </div>
     </div>
   </section>
@@ -347,7 +355,7 @@ button.danger{background:#fff;color:#c0392b;border:1px solid #f1d6d3}
 
 <script>
 /* ===================== Mini DB (localStorage) ===================== */
-const DB_KEY = "invApp_v1";
+const DB_KEY = "invApp_v2";
 const seedDB = {
   customers: [],
   paymentMethods: [
@@ -385,10 +393,12 @@ function listCustomers(){ return [...DB.customers].sort((a,b)=>(a.company||"").l
 
 function upsertPaymentMethod(pm){ if(!pm.id) pm.id=uuid(); const i=DB.paymentMethods.findIndex(p=>p.id===pm.id); if(i>=0) DB.paymentMethods[i]={...DB.paymentMethods[i],...pm}; else DB.paymentMethods.push(pm); saveDB(DB); return pm.id; }
 function deletePaymentMethod(id){ DB.paymentMethods = DB.paymentMethods.filter(p=>p.id!==id); DB.settings.lastPaymentMethodIds = (DB.settings.lastPaymentMethodIds||[]).filter(x=>x!==id); saveDB(DB); }
+function getPaymentMethod(id){ return DB.paymentMethods.find(p=>p.id===id)||null; }
 function listPaymentMethods(){ return [...DB.paymentMethods]; }
 
 /* ===================== Payment list (cards) ===================== */
 const pmListEl = document.getElementById('pmList');
+let editingId = null;
 
 function renderPaymentCards(){
   const selected = new Set(DB.settings.lastPaymentMethodIds||[]);
@@ -399,8 +409,7 @@ function renderPaymentCards(){
     card.className = 'pm-card';
 
     const ck = document.createElement('input');
-    ck.type = 'checkbox';
-    ck.className = 'ck';
+    ck.type = 'checkbox'; ck.className = 'ck';
     ck.checked = selected.has(pm.id);
     ck.addEventListener('change', ()=>{
       if(ck.checked) selected.add(pm.id); else selected.delete(pm.id);
@@ -413,8 +422,8 @@ function renderPaymentCards(){
     const title = document.createElement('div'); title.className='pm-title';
     title.innerHTML = `<span>${pm.label || pm.bankName || (pm.type==='qr'?'QR':'Bank')}</span>
                        <span class="pm-type">${pm.type.toUpperCase()}</span>`;
-    const meta = document.createElement('div'); meta.className='pm-meta';
 
+    const meta = document.createElement('div'); meta.className='pm-meta';
     if(pm.type==='bank'){
       meta.textContent = [
         pm.accountName ? `Beneficiary: ${pm.accountName}` : "",
@@ -428,37 +437,38 @@ function renderPaymentCards(){
     }
 
     const actions = document.createElement('div'); actions.className='pm-actions';
+    const editBtn = document.createElement('button'); editBtn.className='ghost'; editBtn.textContent='Edit';
+    editBtn.addEventListener('click', ()=> startEdit(pm.id));
     const delBtn = document.createElement('button'); delBtn.className='danger'; delBtn.textContent='Delete';
     delBtn.addEventListener('click', ()=>{
       if(confirm('Delete this method?')){ deletePaymentMethod(pm.id); renderPaymentCards(); renderPaymentPreview(); }
     });
-    actions.appendChild(delBtn);
+    actions.appendChild(editBtn); actions.appendChild(delBtn);
 
-    main.appendChild(title); main.appendChild(meta); main.appendChild(actions);
-
-    card.appendChild(ck);
-
+    // thumbnail
+    let right;
     if(pm.type==='qr'){
-      const thumb = document.createElement('div'); thumb.className='pm-thumb';
-      const img = document.createElement('img'); img.alt='QR';
-      if(pm.imagePath) img.src = pm.imagePath;
-      thumb.appendChild(img);
-      card.appendChild(thumb);
+      right = document.createElement('div'); right.className='pm-thumb';
+      const img = document.createElement('img'); img.alt='QR'; if(pm.imagePath) img.src=pm.imagePath;
+      right.appendChild(img);
     }else{
-      const spacer = document.createElement('div'); spacer.style.width='56px'; spacer.style.height='56px'; spacer.style.opacity='.0';
-      card.appendChild(spacer);
+      right = document.createElement('div'); right.style.width='56px'; right.style.height='56px';
     }
 
-    card.appendChild(main);
+    main.appendChild(title); main.appendChild(meta); main.appendChild(actions);
+    card.appendChild(ck); card.appendChild(right); card.appendChild(main);
     pmListEl.appendChild(card);
   });
 }
 
-/* ===================== Add New Method form ===================== */
+/* ========== Add/Edit form handling ========== */
 const typeRadios = document.getElementsByName('pmType');
 const addBankBox = document.getElementById('addBank');
 const addQrBox = document.getElementById('addQR');
 const addStatus = document.getElementById('addStatus');
+const formTitle = document.getElementById('formTitle');
+const btnAddMethod = document.getElementById('btnAddMethod');
+const btnCancelEdit = document.getElementById('btnCancelEdit');
 
 typeRadios.forEach(r=>{
   r.addEventListener('change', ()=>{
@@ -468,11 +478,12 @@ typeRadios.forEach(r=>{
   });
 });
 
-document.getElementById('btnAddMethod').addEventListener('click', async ()=>{
+btnAddMethod.addEventListener('click', async ()=>{
   const type = document.querySelector('input[name="pmType"]:checked').value;
 
   if(type==='bank'){
-    const pm = {
+    const payload = {
+      id: editingId || undefined,
       type:'bank',
       label: document.getElementById('addBankLabel').value.trim(),
       accountName: document.getElementById('addBankName').value.trim(),
@@ -481,34 +492,84 @@ document.getElementById('btnAddMethod').addEventListener('click', async ()=>{
       swift: document.getElementById('addBankSwift').value.trim(),
       currency: document.getElementById('addBankCurr').value.trim() || 'VND'
     };
-    upsertPaymentMethod(pm);
-    addStatus.textContent = 'Added bank ✓';
+    const id = upsertPaymentMethod(payload);
+    addStatus.textContent = editingId ? 'Updated bank ✓' : 'Added bank ✓';
+    if(!editingId){ // auto-select newly added
+      DB.settings.lastPaymentMethodIds = [...new Set([...(DB.settings.lastPaymentMethodIds||[]), id])];
+      saveDB(DB);
+    }
   }else{
-    // QR: prefer upload -> convert to dataURL; else use path textbox
     const file = document.getElementById('addQrFile').files[0];
     let dataURL = null;
-    if(file){
-      dataURL = await fileToDataURL(file);
-    }
-    const pm = {
+    if(file){ dataURL = await fileToDataURL(file); }
+    const payload = {
+      id: editingId || undefined,
       type:'qr',
       label: document.getElementById('addQrLabel').value.trim() || 'QR',
       note: document.getElementById('addQrNote').value.trim(),
       imagePath: dataURL || (document.getElementById('addQrPath').value.trim() || ''),
       showByDefault: document.getElementById('addQrShow').checked
     };
-    upsertPaymentMethod(pm);
-    addStatus.textContent = 'Added QR ✓';
+    const id = upsertPaymentMethod(payload);
+    addStatus.textContent = editingId ? 'Updated QR ✓' : 'Added QR ✓';
+    if(!editingId){
+      DB.settings.lastPaymentMethodIds = [...new Set([...(DB.settings.lastPaymentMethodIds||[]), id])];
+      saveDB(DB);
+    }
   }
 
-  // refresh list and preview
   renderPaymentCards();
   renderPaymentPreview();
-
-  // clear file input
-  document.getElementById('addQrFile').value = '';
+  if(editingId) stopEdit();
+  clearAddForm();
   setTimeout(()=> addStatus.textContent='', 1500);
 });
+
+btnCancelEdit.addEventListener('click', ()=> stopEdit());
+
+function startEdit(id){
+  const pm = getPaymentMethod(id); if(!pm) return;
+  editingId = id;
+  formTitle.textContent = '✏️ Edit Method';
+  btnAddMethod.textContent = 'Update Method';
+  btnCancelEdit.style.display = '';
+
+  if(pm.type==='bank'){
+    document.querySelector('input[name="pmType"][value="bank"]').checked = true;
+    addBankBox.style.display = '';
+    addQrBox.style.display = 'none';
+    document.getElementById('addBankLabel').value = pm.label || '';
+    document.getElementById('addBankName').value = pm.accountName || '';
+    document.getElementById('addBankNo').value = pm.accountNumber || '';
+    document.getElementById('addBankBank').value = pm.bankName || '';
+    document.getElementById('addBankSwift').value = pm.swift || '';
+    document.getElementById('addBankCurr').value = pm.currency || '';
+  }else{
+    document.querySelector('input[name="pmType"][value="qr"]').checked = true;
+    addBankBox.style.display = 'none';
+    addQrBox.style.display = '';
+    document.getElementById('addQrLabel').value = pm.label || '';
+    document.getElementById('addQrNote').value = pm.note || '';
+    document.getElementById('addQrPath').value = typeof pm.imagePath === 'string' ? pm.imagePath : '';
+    document.getElementById('addQrFile').value = '';
+    document.getElementById('addQrShow').checked = !!pm.showByDefault;
+  }
+  addStatus.textContent = 'Editing…';
+}
+function stopEdit(){
+  editingId = null;
+  formTitle.textContent = '+ Add New Method';
+  btnAddMethod.textContent = 'Add Method';
+  btnCancelEdit.style.display = 'none';
+  addStatus.textContent = '';
+  clearAddForm();
+}
+function clearAddForm(){
+  ['addBankLabel','addBankName','addBankNo','addBankBank','addBankSwift','addBankCurr',
+   'addQrLabel','addQrNote','addQrPath'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  const file = document.getElementById('addQrFile'); if(file) file.value='';
+  document.getElementById('addQrShow').checked = false;
+}
 
 function fileToDataURL(file){
   return new Promise((resolve,reject)=>{
@@ -559,35 +620,43 @@ $cusSelect.addEventListener("change", ()=>{ const c=getCustomer($cusSelect.value
 function renderPaymentPreview(){
   const ids = DB.settings.lastPaymentMethodIds || [];
   const list = listPaymentMethods().filter(p=>ids.includes(p.id));
-  const bankLines = [];
+  const banks = [];
   const qrs = [];
 
   list.forEach(p=>{
     if(p.type==='bank'){
-      bankLines.push([
-        p.label || p.bankName,
-        p.accountName ? `Beneficiary: ${p.accountName}` : "",
-        p.accountNumber ? `Account No: ${p.accountNumber}` : "",
-        p.bankName ? `Bank: ${p.bankName}` : "",
-        p.swift ? `SWIFT/BIC: ${p.swift}` : "",
-        p.currency ? `Currency: ${p.currency}` : ""
-      ].filter(Boolean).join("\n"));
+      banks.push({
+        title: p.label || p.bankName || 'Bank',
+        lines: [
+          p.accountName ? `Beneficiary: ${p.accountName}` : "",
+          p.accountNumber ? `Account No: ${p.accountNumber}` : "",
+          p.bankName ? `Bank: ${p.bankName}` : "",
+          p.swift ? `SWIFT/BIC: ${p.swift}` : "",
+          p.currency ? `Currency: ${p.currency}` : ""
+        ].filter(Boolean).join("\n")
+      });
     }else if(p.type==='qr'){
       qrs.push({label:p.label||'QR', imagePath:p.imagePath, note:p.note||''});
     }
   });
 
-  // banks text
-  document.getElementById('invPaymentText').textContent = bankLines.filter(Boolean).join("\n\n");
+  // BANKS
+  const bankWrap = document.getElementById('invBankList'); bankWrap.innerHTML="";
+  banks.forEach(b=>{
+    const div = document.createElement('div'); div.className='bank-card';
+    const h = document.createElement('div'); h.className='bank-title'; h.textContent=b.title;
+    const m = document.createElement('div'); m.className='bank-meta'; m.textContent = b.lines;
+    div.appendChild(h); div.appendChild(m); bankWrap.appendChild(div);
+  });
 
-  // QR list
-  const wrap = document.getElementById('invQRList'); wrap.innerHTML="";
+  // QRS
+  const qrWrap = document.getElementById('invQRList'); qrWrap.innerHTML="";
   qrs.forEach(q=>{
     if(!q.imagePath) return;
     const card = document.createElement('div'); card.className='qr-card';
     const img = document.createElement('img'); img.alt='QR'; img.src = q.imagePath;
     const cap = document.createElement('div'); cap.className='qr-caption'; cap.textContent = q.label;
-    card.appendChild(img); card.appendChild(cap); wrap.appendChild(card);
+    card.appendChild(img); card.appendChild(cap); qrWrap.appendChild(card);
   });
 }
 
@@ -660,7 +729,6 @@ function recalc(){
   document.getElementById('tax').textContent=formatMoney(tax,cur);
   document.getElementById('grand').textContent=formatMoney(grand,cur);
 
-  // keep review in sync (banks text)
   renderPaymentPreview();
 }
 
@@ -707,7 +775,6 @@ function initApp(){
   renderItemsEditor();
   applyFields(); recalc();
 
-  // preselect default QR if any showByDefault
   const defaults = listPaymentMethods().filter(p=>p.type==='qr' && p.showByDefault).map(p=>p.id);
   if(defaults.length){
     const set = new Set([...(DB.settings.lastPaymentMethodIds||[]), ...defaults]);
