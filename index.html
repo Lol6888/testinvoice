@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onetwentysix Verse — Invoice Builder (A4 Print Fixed)</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
+
+:root{
+  --ink:#2b1a4a; --rule:#3b275f; --paper:#faf6f1; --sheet:#fdfaf7;
+  --accent:#ff6f61; --circle:#efdccf; --paybg:#efe8dc; --payborder:#dccfbb;
+  --tbl-bg:#f7f3ed; --tbl-border:#e4dbce; --tbl-zebra1:#fcfaf8; --tbl-zebra2:#f8f5f0;
+  --brand:#2b1a4a; --ok:#16a34a; --muted:#6b7280;
+}
+
+/* ===== Base / Builder ===== */
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--paper);
+  font-family:'Outfit',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  color:var(--ink); -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+  font-variant-numeric:tabular-nums; font-feature-settings:"tnum"1,"lnum"1;
+}
+
+.builder{max-width:980px; margin:18px auto 0; padding:14px}
+.controls{background:#ffffffcc;border:1px solid #e7e1d8;border-radius:12px;padding:14px;box-shadow:0 6px 16px rgba(0,0,0,.06)}
+.controls h3{margin:0 0 10px;font-size:18px;color:var(--brand)}
+.grid{display:grid;gap:12px}
+.grid.cols-3{grid-template-columns:1fr 1fr 1fr}
+.grid.cols-2{grid-template-columns:1fr 1fr}
+label{font-size:13px;font-weight:600}
+input[type="text"],input[type="number"],input[type="date"],select,textarea{
+  width:100%;padding:10px 12px;border:1px solid #e0d8cc;border-radius:10px;background:#fff;font:inherit;color:var(--ink)
+}
+textarea{resize:vertical;min-height:64px}
+.small{font-size:12px;opacity:.7}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button{appearance:none;border:none;cursor:pointer;border-radius:12px;padding:10px 16px;font-weight:700;background:var(--brand);color:#fff;box-shadow:0 6px 16px rgba(0,0,0,.08)}
+button.secondary{background:#7c6a9f}
+button.ghost{background:#fff;color:var(--brand);border:1px solid #d7cabc}
+button.danger{background:#fff;color:#c0392b;border:1px solid #f1d6d3}
+
+/* Items editor */
+.item-row{display:grid;grid-template-columns:1.2fr .4fr .3fr .4fr auto;gap:8px;align-items:center}
+.item-row .del{background:#fff;color:#c0392b;border:1px solid #f1d6d3}
+.add-row{background:#fff;color:var(--brand);border:1px dashed #d7cabc}
+
+/* ===== Payment Method Cards ===== */
+.pm-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.pm-card{
+  border:1px solid #e7e1d8;border-radius:12px;background:#fff;padding:12px;display:flex;gap:10px;align-items:flex-start
+}
+.pm-card .ck{margin-top:4px}
+.pm-main{flex:1 1 auto}
+.pm-title{margin:0 0 6px;font-size:14px;font-weight:800;color:var(--brand);display:flex;gap:8px;align-items:center}
+.pm-meta{font-size:12px;white-space:pre-wrap;line-height:1.4;color:#3a2e5a}
+.pm-actions{display:flex;gap:6px;margin-top:8px}
+.pm-type{font-size:11px;padding:2px 6px;border-radius:999px;border:1px solid #e7e1d8;background:#f8fafc;color:#4b5563}
+.pm-thumb{width:56px;height:56px;border:1px dashed #d7cabc;border-radius:8px;display:grid;place-items:center;overflow:hidden;background:#fff}
+.pm-thumb img{width:100%;height:100%;object-fit:contain}
+
+/* ===== Invoice Preview ===== */
+.invoice-wrapper{
+  position:relative;max-width:820px;margin:18px auto 40px;background:var(--sheet);
+  padding:60px 60px 44px;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.08);overflow:hidden;z-index:0
+}
+/* đảm bảo text nổi trên décor */
+.invoice-header,.title,.info,.items-wrapper,.summary,.payment-box,.invoice-note{position:relative;z-index:2}
+
+.decor{position:absolute;pointer-events:none}
+.decor-circle{top:-140px;right:-140px;width:420px;height:420px;background:var(--circle);opacity:.65;border-radius:50%}
+.decor-blob{top:128px;right:44px;width:112px;height:112px;background:var(--accent);border-radius:32% 68% 61% 39%/38% 31% 69% 62%;transform:rotate(22deg)}
+
+.invoice-header{display:flex;justify-content:space-between;align-items:flex-start}
+.logo-col{display:flex;align-items:center;gap:14px;min-width:0}
+.logo{width:64px;height:64px;object-fit:contain;flex:0 0 64px;background:#fff;border-radius:8px}
+.company-info{line-height:1.2;min-width:0}
+.company-name{font-size:18px;font-weight:700;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tagline{font-size:13px;margin-top:2px;opacity:.8}
+.social{text-align:right}
+.social p{margin:.25rem 0 .5rem;font-size:14px;opacity:.9}
+.icons{display:flex;gap:10px;justify-content:flex-end}
+.ico{display:inline-grid;place-items:center;width:26px;height:26px;border:1.5px solid currentColor;border-radius:50%;color:var(--ink);text-decoration:none}
+.ico svg{width:14px;height:14px}
+
+.title{font-size:24px;font-weight:700;margin:36px 0 16px}
+.info{display:grid;grid-template-columns:1.2fr .6fr .6fr;gap:24px;font-size:15px;margin-bottom:16px}
+.info strong{display:block;margin-bottom:6px}
+
+/* Table A+B */
+.items-wrapper{background:var(--tbl-bg);border:1px solid var(--tbl-border);border-radius:10px;padding:16px 20px;margin-top:16px}
+.items{width:100%;border-collapse:separate;border-spacing:0}
+.items thead{border-bottom:2px solid var(--rule)}
+.items th{padding:10px 8px;text-align:left;font-weight:700;letter-spacing:.2px}
+.items td{padding:12px 8px;font-size:15px;border-bottom:1px solid var(--tbl-border)}
+.items tbody tr:nth-child(odd){background:var(--tbl-zebra1)}
+.items tbody tr:nth-child(even){background:var(--tbl-zebra2)}
+.items tbody tr:last-child td{border-bottom:none}
+.items th:nth-child(2),.items th:nth-child(3),.items th:nth-child(4),
+.items td:nth-child(2),.items td:nth-child(3),.items td:nth-child(4){text-align:right}
+
+.summary{margin-top:18px;font-size:16px;text-align:right;line-height:1.9}
+.summary span{display:inline-block;width:110px;text-align:right;font-weight:600}
+.summary .total{font-weight:800;font-size:18px}
+
+/* Payment section (review) */
+.payment-box{margin-top:28px;padding:20px 22px;background:var(--paybg);border:1px solid var(--payborder);border-radius:14px}
+.payment-box h3{margin:0 0 14px;font-size:18px;font-weight:800}
+.payment-grid{display:grid;grid-template-columns:1.3fr .7fr;gap:22px;align-items:start}
+.pay-col h4{margin:4px 0 10px;font-size:15px;font-weight:700}
+.banklines{margin:0;white-space:pre-wrap;font-size:14px}
+
+/* ==== Multi-QR layout (review) ==== */
+.qr-list{display:grid;grid-template-columns: repeat(auto-fill, minmax(120px,1fr));gap:12px}
+.qr-card{background:#fff;border:1px dashed var(--payborder);border-radius:12px;padding:8px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.qr-card img{width:100%;aspect-ratio:1/1;object-fit:contain;border-radius:8px}
+.qr-caption{margin-top:6px;font-size:12px;text-align:center;opacity:.8;word-break:break-word}
+
+.invoice-note{margin-top:40px;text-align:center;border-top:1px solid #e4dbce;padding-top:20px;color:var(--ink)}
+.invoice-note .note-line{font-size:15px;font-weight:600;margin-bottom:6px}
+.invoice-note .wish-line{font-size:14px;opacity:.8;font-style:italic}
+
+/* ===== Print: luôn khít 1 trang A4 ===== */
+@page{ size: A4; margin: 0; }
+
+@media print{
+  :root{ --p: .94; }
+  body{ background:#fff; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .builder{ display:none !important; }
+  .invoice-wrapper{
+    width: calc(210mm / var(--p));
+    min-height: calc(297mm / var(--p));
+    margin: 0; border-radius: 0; box-shadow: none;
+    padding: 18mm 16mm 16mm; transform: scale(var(--p)); transform-origin: top left;
+    overflow: hidden; page-break-after: always; page-break-inside: avoid;
+  }
+  .decor-circle{ top: -52mm; right: -52mm; width: 160mm; height: 160mm; }
+  .decor-blob{ top: 38mm; right: 22mm; }
+  .info, .items-wrapper, .summary, .payment-box, .invoice-note, .items, .items tbody, .items tr{ break-inside: avoid; page-break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<!-- ===== Builder ===== -->
+<div class="builder">
+  <div class="controls">
+    <h3>Invoice Builder</h3>
+
+    <div class="grid cols-3">
+      <div><label>Company Name</label><input id="inpCompany" type="text" value="Onetwentysix Verse CO., LTD"></div>
+      <div><label>Tagline</label><input id="inpTagline" type="text" value="Brand &amp; Marketing Solutions"></div>
+      <div><label>Logo (optional)</label><input id="inpLogo" type="file" accept="image/*"><div class="small">If empty, default logo path will be used.</div></div>
+    </div>
+
+    <!-- ========== CUSTOMER AREA ========== -->
+    <div class="grid cols-3" style="margin-top:10px">
+      <div>
+        <label>Chọn khách hàng</label>
+        <select id="customerSelect"></select>
+      </div>
+      <div class="row">
+        <button type="button" id="btnNewCustomer">+ KH mới</button>
+        <button type="button" id="btnSaveCustomer">💾 Lưu KH hiện tại</button>
+      </div>
+      <div class="small">Lưu KH vào trình duyệt. Có thể Export/Import JSON bên dưới.</div>
+    </div>
+
+    <div class="grid cols-3" style="margin-top:10px">
+      <div><label>Billing to (Name)</label><input id="inpBillName" type="text" value="Name surname"></div>
+      <div><label>Billing Address</label><input id="inpBillAddr" type="text" value="Street 123. California"></div>
+      <div><label>Username (top-right)</label><input id="inpUsername" type="text" value="Onetwentysix Verse"></div>
+    </div>
+
+    <!-- Form khách hàng chi tiết -->
+    <div class="grid cols-3" style="margin-top:10px">
+      <div><label>KH — Tên</label><input id="cusName" placeholder="Contact person"></div>
+      <div><label>KH — Công ty</label><input id="cusCompany" placeholder="Company Ltd"></div>
+      <div><label>KH — Email</label><input id="cusEmail" type="email" placeholder="name@company.com"></div>
+      <div><label>KH — Điện thoại</label><input id="cusPhone" placeholder="+84 ..."></div>
+      <div class="grid" style="grid-column: span 2;">
+        <label>KH — Địa chỉ</label><input id="cusAddress" placeholder="Address...">
+      </div>
+      <div><label>KH — MST/Tax</label><input id="cusTax" placeholder="Tax code"></div>
+      <div class="grid" style="grid-column: span 2;">
+        <label>KH — Ghi chú</label><input id="cusNotes" placeholder="Notes...">
+      </div>
+    </div>
+
+    <div class="grid cols-3" style="margin-top:10px">
+      <div><label>Invoice #</label><input id="inpNumber" type="text" value="#0001"></div>
+      <div><label>Date</label><input id="inpDate" type="date" value="2024-02-13"></div>
+      <div><label>Currency</label>
+        <select id="inpCurrency">
+          <option value="USD" selected>USD ($)</option>
+          <option value="VND">VND (₫)</option>
+          <option value="GBP">GBP (£)</option>
+          <option value="AUD">AUD (A$)</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-top:10px">
+      <label>Items</label>
+      <div id="itemsEditor"></div>
+      <button class="add-row" id="btnAddRow">+ Add item</button>
+    </div>
+
+    <div class="grid cols-3" style="margin-top:10px">
+      <div><label>VAT (%)</label><input id="inpVAT" type="number" value="10" min="0" step="0.1"></div>
+      <div><label>Note (footer line 1)</label><input id="inpNote1" type="text" value="Thank you for choosing Onetwentysix Verse as your creative partner."></div>
+      <div><label>Wish (footer line 2)</label><input id="inpNote2" type="text" value="We wish you continued success and growth — let’s build something remarkable together!"></div>
+    </div>
+
+    <!-- ========== PAYMENT METHODS: list of cards + add form ========== -->
+    <div style="margin-top:12px">
+      <label>Payment Methods (tick to show in invoice)</label>
+      <div id="pmList" class="pm-list"></div>
+    </div>
+
+    <div style="margin-top:12px;border:1px dashed #d7cabc;border-radius:12px;padding:12px;background:#fff">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <strong>+ Add New Method</strong>
+        <span class="small" id="addStatus" style="color:var(--muted)"></span>
+      </div>
+      <div class="row">
+        <label style="display:flex;gap:6px;align-items:center"><input type="radio" name="pmType" value="bank" checked> Bank</label>
+        <label style="display:flex;gap:6px;align-items:center"><input type="radio" name="pmType" value="qr"> QR</label>
+      </div>
+
+      <!-- BANK form -->
+      <div id="addBank" class="grid cols-3" style="margin-top:8px">
+        <div><label>Label</label><input id="addBankLabel" placeholder="Vietcombank | VND"></div>
+        <div><label>Beneficiary</label><input id="addBankName" placeholder="Account holder"></div>
+        <div><label>Account No</label><input id="addBankNo" placeholder="0161001689119"></div>
+        <div><label>Bank</label><input id="addBankBank" placeholder="Vietcombank"></div>
+        <div><label>SWIFT/BIC</label><input id="addBankSwift" placeholder="BFTVVNVX"></div>
+        <div><label>Currency</label><input id="addBankCurr" placeholder="VND"></div>
+      </div>
+
+      <!-- QR form -->
+      <div id="addQR" class="grid cols-3" style="display:none;margin-top:8px">
+        <div><label>Label</label><input id="addQrLabel" placeholder="PayPal QR"></div>
+        <div><label>Note</label><input id="addQrNote" placeholder="Scan to pay"></div>
+        <div><label>Image Path (optional)</label><input id="addQrPath" placeholder="paypal-qr.png"></div>
+        <div>
+          <label>Upload Image</label>
+          <input id="addQrFile" type="file" accept="image/*">
+          <div class="small">Nếu upload, ảnh sẽ được lưu dưới dạng dataURL trong localStorage.</div>
+        </div>
+        <div style="align-self:end">
+          <label style="display:flex;gap:6px;align-items:center"><input id="addQrShow" type="checkbox"> Show by default</label>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <button id="btnAddMethod">Add Method</button>
+        <button class="ghost" id="btnExportData">⬇️ Export JSON</button>
+        <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+          ⬆️ Import JSON
+          <input id="importFile" type="file" accept="application/json" style="display:none;">
+        </label>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px;justify-content:flex-end">
+      <button id="btnPNG">Download PNG</button>
+      <button id="btnPreview">Preview</button>
+      <button class="secondary" id="btnRecalc">Recalculate</button>
+      <button class="ghost" onclick="window.print()">Download PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Invoice (Review) ===== -->
+<div id="invoice" class="invoice-wrapper">
+  <div class="decor decor-circle"></div>
+  <div class="decor decor-blob"></div>
+
+  <header class="invoice-header">
+    <div class="logo-col">
+      <img id="logo" src="logo300x300.png" alt="logo" class="logo">
+      <div class="company-info">
+        <h1 id="companyName" class="company-name">Onetwentysix Verse CO., LTD</h1>
+        <p id="companyTagline" class="tagline">Brand &amp; Marketing Solutions</p>
+      </div>
+    </div>
+    <div class="social">
+      <p id="username">@username</p>
+      <div class="icons" aria-label="social links">
+        <a href="#" aria-label="Facebook" class="ico"><svg viewBox="0 0 24 24"><path d="M22 12.07C22 6.49 17.52 2 11.93 2S2 6.49 2 12.07c0 5.02 3.66 9.19 8.44 9.98v-7.06H7.9v-2.92h2.54V9.41c0-2.5 1.49-3.88 3.77-3.88 1.09 0 2.22.2 2.22.2v2.44h-1.25c-1.23 0-1.61.77-1.61 1.56v1.87h2.74l-.44 2.92h-2.3v7.06C18.34 21.26 22 17.09 22 12.07z" fill="currentColor"/></svg></a>
+        <a href="#" aria-label="Instagram" class="ico"><svg viewBox="0 0 24 24"><path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm10 2H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3zm-5 3.5a5.5 5.5 0 1 1 0 11.001 5.5 5.5 0 0 1 0-11zM19 6.5a1 1 0 1 1-2.001-.002A1 1 0 0 1 19 6.5z" fill="currentColor"/></svg></a>
+        <a href="#" aria-label="Twitter" class="ico"><svg viewBox="0 0 24 24"><path d="M22.46 6c-.77.34-1.6.57-2.46.68a4.23 4.23 0 0 0 1.85-2.34 8.42 8.42 0 0 1-2.67 1.02 4.21 4.21 0 0 0-7.29 3.84A11.95 11.95 0 0 1 3.15 4.7a4.2 4.2 0 0 0 1.3 5.62 4.16 4.16 0 0 1-1.9-.52v.05a4.22 4.22 0 0 0 3.38 4.13c-.46.12-.94.18-1.44.07a4.23 4.23 0 0 0 3.94 2.93A8.45 8.45 0 0 1 2 19.55 11.93 11.93 0 0 0 8.29 21c7.55 0 11.68-6.26 11.68-11.68 0-.18 0-.35-.01-.53A8.34 8.34 0 0 0 22.46 6z" fill="currentColor"/></svg></a>
+      </div>
+    </div>
+  </header>
+
+  <h2 class="title">Invoice</h2>
+
+  <section class="info">
+    <div>
+      <strong>Billing to:</strong>
+      <p id="billTo">Name surname<br>Street 123. California</p>
+    </div>
+    <div><p><strong>Invoice number</strong><br><span id="invNumber">#0001</span></p></div>
+    <div><p><strong>Date</strong><br><span id="invDate">February 13, 2024</span></p></div>
+  </section>
+
+  <div class="items-wrapper">
+    <table class="items">
+      <colgroup><col style="width:55%"><col style="width:15%"><col style="width:10%"><col style="width:20%"></colgroup>
+      <thead><tr><th>Description</th><th>Price</th><th>Qty.</th><th>Total</th></tr></thead>
+      <tbody id="itemsBody"></tbody>
+    </table>
+  </div>
+
+  <section class="summary">
+    <p>Subtotal <span id="subtotal">$0.00</span></p>
+    <p>Tax <span id="tax">$0.00</span></p>
+    <p class="total">Total <span id="grand">$0.00</span></p>
+  </section>
+
+  <section class="payment-box">
+    <h3>Payment Information</h3>
+    <div class="payment-grid">
+      <div class="pay-col">
+        <h4>Bank Transfer / Methods</h4>
+        <pre id="invPaymentText" class="banklines"></pre>
+      </div>
+      <div class="pay-col">
+        <h4>QR (Scan to Pay)</h4>
+        <div id="invQRList" class="qr-list"></div>
+        <p class="note">Open app/camera to scan QR.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="invoice-note">
+    <p class="note-line" id="note1">Thank you for choosing <strong>Onetwentysix Verse</strong> as your creative partner.</p>
+    <p class="wish-line" id="note2">We wish you continued success and growth — let’s build something remarkable together!</p>
+  </footer>
+</div>
+
+<script>
+/* ===================== Mini DB (localStorage) ===================== */
+const DB_KEY = "invApp_v1";
+const seedDB = {
+  customers: [],
+  paymentMethods: [
+    { id:"mbbank-default", type:"bank", label:"MBBANK (Default)", bankName:"MBBank",
+      accountName:"PHAN NGOC THINH", accountNumber:"970422xxxxxxx", swift:"MSCBVNVX", currency:"VND", isDefault:true },
+    { id:"vietcombank-default", type:"bank", label:"Vietcombank (Default)", bankName:"Vietcombank – Joint Stock Commercial Bank for Foreign Trade of Vietnam",
+      accountName:"PHAN NGOC THINH", accountNumber:"0161001689119", swift:"BFTVVNVX", currency:"VND", isDefault:false },
+    { id:"paypal-qr", type:"qr", label:"PayPal QR", imagePath:"paypal-qr.png", note:"Scan to pay", showByDefault:false }
+  ],
+  settings: { lastCustomerId:null, lastPaymentMethodIds:["mbbank-default"] }
+};
+function loadDB(){
+  try{
+    const raw = localStorage.getItem(DB_KEY);
+    if(!raw){ localStorage.setItem(DB_KEY, JSON.stringify(seedDB)); return structuredClone(seedDB); }
+    const parsed = JSON.parse(raw);
+    return {
+      ...structuredClone(seedDB), ...parsed,
+      customers: parsed.customers ?? [],
+      paymentMethods: parsed.paymentMethods ?? structuredClone(seedDB.paymentMethods),
+      settings: { ...seedDB.settings, ...(parsed.settings||{}) }
+    };
+  }catch(e){ console.error(e); localStorage.setItem(DB_KEY, JSON.stringify(seedDB)); return structuredClone(seedDB); }
+}
+function saveDB(db){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+let DB = loadDB();
+
+/* ===================== Helpers & CRUD ===================== */
+const $ = s=>document.querySelector(s);
+const uuid = () => "id-" + Math.random().toString(36).slice(2,9);
+
+function upsertCustomer(cus){ if(!cus.id) cus.id=uuid(); const i=DB.customers.findIndex(x=>x.id===cus.id||(cus.email&&x.email===cus.email)); if(i>=0) DB.customers[i]={...DB.customers[i],...cus}; else DB.customers.push(cus); DB.settings.lastCustomerId=cus.id; saveDB(DB); return cus.id; }
+function getCustomer(id){ return DB.customers.find(c=>c.id===id)||null; }
+function listCustomers(){ return [...DB.customers].sort((a,b)=>(a.company||"").localeCompare(b.company||"")); }
+
+function upsertPaymentMethod(pm){ if(!pm.id) pm.id=uuid(); const i=DB.paymentMethods.findIndex(p=>p.id===pm.id); if(i>=0) DB.paymentMethods[i]={...DB.paymentMethods[i],...pm}; else DB.paymentMethods.push(pm); saveDB(DB); return pm.id; }
+function deletePaymentMethod(id){ DB.paymentMethods = DB.paymentMethods.filter(p=>p.id!==id); DB.settings.lastPaymentMethodIds = (DB.settings.lastPaymentMethodIds||[]).filter(x=>x!==id); saveDB(DB); }
+function listPaymentMethods(){ return [...DB.paymentMethods]; }
+
+/* ===================== Payment list (cards) ===================== */
+const pmListEl = document.getElementById('pmList');
+
+function renderPaymentCards(){
+  const selected = new Set(DB.settings.lastPaymentMethodIds||[]);
+  const list = listPaymentMethods();
+  pmListEl.innerHTML = "";
+  list.forEach(pm=>{
+    const card = document.createElement('div');
+    card.className = 'pm-card';
+
+    const ck = document.createElement('input');
+    ck.type = 'checkbox';
+    ck.className = 'ck';
+    ck.checked = selected.has(pm.id);
+    ck.addEventListener('change', ()=>{
+      if(ck.checked) selected.add(pm.id); else selected.delete(pm.id);
+      DB.settings.lastPaymentMethodIds = [...selected];
+      saveDB(DB);
+      renderPaymentPreview();
+    });
+
+    const main = document.createElement('div'); main.className='pm-main';
+    const title = document.createElement('div'); title.className='pm-title';
+    title.innerHTML = `<span>${pm.label || pm.bankName || (pm.type==='qr'?'QR':'Bank')}</span>
+                       <span class="pm-type">${pm.type.toUpperCase()}</span>`;
+    const meta = document.createElement('div'); meta.className='pm-meta';
+
+    if(pm.type==='bank'){
+      meta.textContent = [
+        pm.accountName ? `Beneficiary: ${pm.accountName}` : "",
+        pm.accountNumber ? `Account No: ${pm.accountNumber}` : "",
+        pm.bankName ? `Bank: ${pm.bankName}` : "",
+        pm.swift ? `SWIFT/BIC: ${pm.swift}` : "",
+        pm.currency ? `Currency: ${pm.currency}` : ""
+      ].filter(Boolean).join("\n");
+    }else{
+      meta.textContent = `${pm.note||''}`.trim();
+    }
+
+    const actions = document.createElement('div'); actions.className='pm-actions';
+    const delBtn = document.createElement('button'); delBtn.className='danger'; delBtn.textContent='Delete';
+    delBtn.addEventListener('click', ()=>{
+      if(confirm('Delete this method?')){ deletePaymentMethod(pm.id); renderPaymentCards(); renderPaymentPreview(); }
+    });
+    actions.appendChild(delBtn);
+
+    main.appendChild(title); main.appendChild(meta); main.appendChild(actions);
+
+    card.appendChild(ck);
+
+    if(pm.type==='qr'){
+      const thumb = document.createElement('div'); thumb.className='pm-thumb';
+      const img = document.createElement('img'); img.alt='QR';
+      if(pm.imagePath) img.src = pm.imagePath;
+      thumb.appendChild(img);
+      card.appendChild(thumb);
+    }else{
+      const spacer = document.createElement('div'); spacer.style.width='56px'; spacer.style.height='56px'; spacer.style.opacity='.0';
+      card.appendChild(spacer);
+    }
+
+    card.appendChild(main);
+    pmListEl.appendChild(card);
+  });
+}
+
+/* ===================== Add New Method form ===================== */
+const typeRadios = document.getElementsByName('pmType');
+const addBankBox = document.getElementById('addBank');
+const addQrBox = document.getElementById('addQR');
+const addStatus = document.getElementById('addStatus');
+
+typeRadios.forEach(r=>{
+  r.addEventListener('change', ()=>{
+    const isBank = document.querySelector('input[name="pmType"]:checked').value==='bank';
+    addBankBox.style.display = isBank ? '' : 'none';
+    addQrBox.style.display = isBank ? 'none' : '';
+  });
+});
+
+document.getElementById('btnAddMethod').addEventListener('click', async ()=>{
+  const type = document.querySelector('input[name="pmType"]:checked').value;
+
+  if(type==='bank'){
+    const pm = {
+      type:'bank',
+      label: document.getElementById('addBankLabel').value.trim(),
+      accountName: document.getElementById('addBankName').value.trim(),
+      accountNumber: document.getElementById('addBankNo').value.trim(),
+      bankName: document.getElementById('addBankBank').value.trim(),
+      swift: document.getElementById('addBankSwift').value.trim(),
+      currency: document.getElementById('addBankCurr').value.trim() || 'VND'
+    };
+    upsertPaymentMethod(pm);
+    addStatus.textContent = 'Added bank ✓';
+  }else{
+    // QR: prefer upload -> convert to dataURL; else use path textbox
+    const file = document.getElementById('addQrFile').files[0];
+    let dataURL = null;
+    if(file){
+      dataURL = await fileToDataURL(file);
+    }
+    const pm = {
+      type:'qr',
+      label: document.getElementById('addQrLabel').value.trim() || 'QR',
+      note: document.getElementById('addQrNote').value.trim(),
+      imagePath: dataURL || (document.getElementById('addQrPath').value.trim() || ''),
+      showByDefault: document.getElementById('addQrShow').checked
+    };
+    upsertPaymentMethod(pm);
+    addStatus.textContent = 'Added QR ✓';
+  }
+
+  // refresh list and preview
+  renderPaymentCards();
+  renderPaymentPreview();
+
+  // clear file input
+  document.getElementById('addQrFile').value = '';
+  setTimeout(()=> addStatus.textContent='', 1500);
+});
+
+function fileToDataURL(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ===================== Customers ===================== */
+const $cusSelect = $("#customerSelect");
+const $name = $("#cusName"); const $company = $("#cusCompany"); const $email = $("#cusEmail");
+const $phone = $("#cusPhone"); const $address = $("#cusAddress"); const $tax = $("#cusTax"); const $notes = $("#cusNotes");
+
+function fillCustomerForm(c){
+  $name.value = c?.name || ""; $company.value = c?.company || ""; $email.value = c?.email || "";
+  $phone.value = c?.phone || ""; $address.value = c?.address || ""; $tax.value = c?.taxCode || ""; $notes.value = c?.notes || "";
+  if(c){
+    $("#inpBillName").value = [c.name, c.company].filter(Boolean).join(" — ");
+    $("#inpBillAddr").value = [c.address, c.email, c.phone].filter(Boolean).join(" | ");
+    applyFields();
+  }
+}
+function readCustomerForm(id){
+  return {
+    id, name:$name.value.trim(), company:$company.value.trim(), email:$email.value.trim(),
+    phone:$phone.value.trim(), address:$address.value.trim(), taxCode:$tax.value.trim(), notes:$notes.value.trim()
+  };
+}
+function refreshCustomerList(){
+  const list = listCustomers();
+  $cusSelect.innerHTML = "";
+  const opt0 = document.createElement("option"); opt0.value=""; opt0.textContent="-- Chọn khách hàng --"; $cusSelect.appendChild(opt0);
+  list.forEach(c=>{ const opt=document.createElement("option"); opt.value=c.id; opt.textContent= c.company?`${c.company} — ${c.name||""}`:(c.name || c.email || c.id); $cusSelect.appendChild(opt); });
+  if(DB.settings.lastCustomerId){ $cusSelect.value=DB.settings.lastCustomerId; const c=getCustomer(DB.settings.lastCustomerId); if(c) fillCustomerForm(c); }
+}
+
+document.getElementById("btnNewCustomer").addEventListener("click", ()=>{ $cusSelect.value=""; fillCustomerForm(null); });
+document.getElementById("btnSaveCustomer").addEventListener("click", ()=>{
+  const currentId = $cusSelect.value || null;
+  const id = upsertCustomer(readCustomerForm(currentId));
+  refreshCustomerList(); $cusSelect.value = id; alert("Đã lưu khách hàng!");
+});
+$cusSelect.addEventListener("change", ()=>{ const c=getCustomer($cusSelect.value); fillCustomerForm(c); });
+
+/* ===================== Review (Payment preview) ===================== */
+function renderPaymentPreview(){
+  const ids = DB.settings.lastPaymentMethodIds || [];
+  const list = listPaymentMethods().filter(p=>ids.includes(p.id));
+  const bankLines = [];
+  const qrs = [];
+
+  list.forEach(p=>{
+    if(p.type==='bank'){
+      bankLines.push([
+        p.label || p.bankName,
+        p.accountName ? `Beneficiary: ${p.accountName}` : "",
+        p.accountNumber ? `Account No: ${p.accountNumber}` : "",
+        p.bankName ? `Bank: ${p.bankName}` : "",
+        p.swift ? `SWIFT/BIC: ${p.swift}` : "",
+        p.currency ? `Currency: ${p.currency}` : ""
+      ].filter(Boolean).join("\n"));
+    }else if(p.type==='qr'){
+      qrs.push({label:p.label||'QR', imagePath:p.imagePath, note:p.note||''});
+    }
+  });
+
+  // banks text
+  document.getElementById('invPaymentText').textContent = bankLines.filter(Boolean).join("\n\n");
+
+  // QR list
+  const wrap = document.getElementById('invQRList'); wrap.innerHTML="";
+  qrs.forEach(q=>{
+    if(!q.imagePath) return;
+    const card = document.createElement('div'); card.className='qr-card';
+    const img = document.createElement('img'); img.alt='QR'; img.src = q.imagePath;
+    const cap = document.createElement('div'); cap.className='qr-caption'; cap.textContent = q.label;
+    card.appendChild(img); card.appendChild(cap); wrap.appendChild(card);
+  });
+}
+
+/* ===================== Existing builder logic ===================== */
+const formatMoney = (num, currency) => {
+  const map={USD:{style:'currency',currency:'USD'},VND:{style:'currency',currency:'VND',minimumFractionDigits:0},GBP:{style:'currency',currency:'GBP'},AUD:{style:'currency',currency:'AUD'}};
+  const opt=map[currency]||map.USD; return new Intl.NumberFormat('en-US',opt).format(num||0);
+};
+const parseNum=v=>isNaN(+v)?0:+v;
+
+let items=[{desc:'Lorem ipsum dolor',price:0,qty:1}];
+
+const itemsEditor=document.getElementById('itemsEditor');
+function renderItemsEditor(){
+  itemsEditor.innerHTML='';
+  items.forEach((it,idx)=>{
+    const row=document.createElement('div');
+    row.className='item-row';
+    row.innerHTML=`
+      <input data-k="desc" data-i="${idx}" type="text" placeholder="Description" value="${it.desc}">
+      <input data-k="price" data-i="${idx}" type="number" min="0" step="0.01" placeholder="Price" value="${it.price}">
+      <input data-k="qty" data-i="${idx}" type="number" min="0" step="1" placeholder="Qty" value="${it.qty}">
+      <input data-k="total" type="text" value="" disabled placeholder="Auto">
+      <button class="del" data-del="${idx}">Delete</button>`;
+    itemsEditor.appendChild(row);
+  });
+  itemsEditor.querySelectorAll('input[data-k]').forEach(inp=>{
+    inp.addEventListener('input',()=>{
+      const i=+inp.dataset.i,k=inp.dataset.k;
+      if(k==='desc') items[i].desc=inp.value;
+      if(k==='price') items[i].price=parseNum(inp.value);
+      if(k==='qty') items[i].qty=parseNum(inp.value);
+      recalc();
+    });
+  });
+  itemsEditor.querySelectorAll('button[data-del]').forEach(btn=>{
+    btn.onclick=()=>{items.splice(+btn.dataset.del,1); renderItemsEditor(); recalc();};
+  });
+  const cur=document.getElementById('inpCurrency').value;
+  itemsEditor.querySelectorAll('.item-row').forEach((row,i)=>{
+    const t=(items[i].price||0)*(items[i].qty||0);
+    row.querySelector('input[disabled]').value=formatMoney(t,cur);
+  });
+}
+document.getElementById('btnAddRow').onclick=()=>{items.push({desc:'',price:0,qty:1}); renderItemsEditor();};
+
+function applyFields(){
+  document.getElementById('companyName').textContent=document.getElementById('inpCompany').value||'Onetwentysix Verse CO., LTD';
+  document.getElementById('companyTagline').textContent=document.getElementById('inpTagline').value||'';
+  document.getElementById('username').textContent=document.getElementById('inpUsername').value||'';
+  document.getElementById('billTo').innerHTML=(document.getElementById('inpBillName').value||'')+'<br>'+(document.getElementById('inpBillAddr').value||'');
+  document.getElementById('invNumber').textContent=document.getElementById('inpNumber').value||'#0001';
+  const d=document.getElementById('inpDate').value; if(d){const dt=new Date(d); document.getElementById('invDate').textContent=dt.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});}
+  document.getElementById('note1').innerHTML=(document.getElementById('inpNote1').value||'').replace(/\n/g,'<br>');
+  document.getElementById('note2').innerHTML=(document.getElementById('inpNote2').value||'').replace(/\n/g,'<br>');
+}
+function recalc(){
+  const cur=document.getElementById('inpCurrency').value;
+  const tbody=document.getElementById('itemsBody'); tbody.innerHTML='';
+  let subtotal=0;
+  items.forEach(it=>{
+    const line=(it.price||0)*(it.qty||0); subtotal+=line;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${it.desc||''}</td><td>${formatMoney(it.price||0,cur)}</td><td>${it.qty||0}</td><td>${formatMoney(line,cur)}</td>`;
+    tbody.appendChild(tr);
+  });
+  const vat=parseNum(document.getElementById('inpVAT').value||0);
+  const tax=subtotal*(vat/100); const grand=subtotal+tax;
+  document.getElementById('subtotal').textContent=formatMoney(subtotal,cur);
+  document.getElementById('tax').textContent=formatMoney(tax,cur);
+  document.getElementById('grand').textContent=formatMoney(grand,cur);
+
+  // keep review in sync (banks text)
+  renderPaymentPreview();
+}
+
+/* uploads */
+document.getElementById('inpLogo').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f) return; document.getElementById('logo').src=URL.createObjectURL(f);
+});
+
+/* Export/Import */
+document.getElementById('btnExportData').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(DB,null,2)], {type:"application/json"});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='invoice-data-backup.json'; a.click();
+});
+document.getElementById('importFile').addEventListener('change', e=>{
+  const f=e.target.files?.[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload = ev=>{
+    try{
+      const incoming = JSON.parse(ev.target.result);
+      DB = { ...seedDB, ...incoming };
+      saveDB(DB);
+      refreshCustomerList();
+      renderPaymentCards();
+      renderPaymentPreview();
+      alert('Imported! Data applied.');
+    }catch(err){ alert('Invalid JSON'); }
+  };
+  r.readAsText(f);
+});
+
+/* Buttons */
+document.getElementById('btnPreview').onclick=()=>{applyFields(); recalc(); document.getElementById('invoice').scrollIntoView({behavior:'smooth'});};
+document.getElementById('btnRecalc').onclick=()=>{applyFields(); recalc();};
+document.getElementById('btnPNG').addEventListener('click', async () => {
+  const invoice = document.getElementById('invoice'); invoice.scrollIntoView();
+  const canvas = await html2canvas(invoice, { scale: 2, useCORS: true, backgroundColor: '#fff' });
+  const link = document.createElement('a'); link.download = 'invoice.png'; link.href = canvas.toDataURL('image/png'); link.click();
+});
+
+/* ===================== Init ===================== */
+function initApp(){
+  refreshCustomerList();
+  renderPaymentCards();
+  renderItemsEditor();
+  applyFields(); recalc();
+
+  // preselect default QR if any showByDefault
+  const defaults = listPaymentMethods().filter(p=>p.type==='qr' && p.showByDefault).map(p=>p.id);
+  if(defaults.length){
+    const set = new Set([...(DB.settings.lastPaymentMethodIds||[]), ...defaults]);
+    DB.settings.lastPaymentMethodIds = [...set]; saveDB(DB);
+  }
+  renderPaymentCards();
+  renderPaymentPreview();
+}
+window.addEventListener('DOMContentLoaded', initApp);
+</script>
+
+</body>
+</html>
