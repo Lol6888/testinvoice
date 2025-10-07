@@ -76,7 +76,7 @@ button:hover{box-shadow:var(--shadow)}
 button:active{transform:translateY(1px)}
 button.secondary{background:#7c6a9f}
 button.ghost{background:#fff;color:var(--brand);border:1px solid #d7cabc}
-button.danger{background:#fff;color:#c0392b;border:1px solid #f1d6d3}
+button.danger{background:#fff;color:#c0392b;border:1px solid #f1d3d3}
 button.add-row{background:#fff;color:var(--brand);border:1px dashed #d7cabc}
 
 /* Items editor */
@@ -162,6 +162,31 @@ button.add-row{background:#fff;color:var(--brand);border:1px dashed #d7cabc}
 .qr-card img{width:100%;aspect-ratio:1/1;object-fit:contain;border-radius:8px}
 .qr-caption{margin-top:6px;font-size:12px;text-align:center;opacity:.8;word-break:break-word}
 
+/* Signature Section Styles */
+.invoice-signature{
+  margin-top: 50px;
+  margin-left: auto; /* Push to the right */
+  width: fit-content; /* Take only needed width */
+  text-align: center;
+}
+.signature-line{
+  width: 220px;
+  height: 1.5px;
+  background: var(--rule);
+  margin: 40px 0 10px;
+}
+.signature-name{
+  font-weight: 800;
+  margin: 0;
+  font-size: 15px;
+}
+.signature-title{
+  font-size: 13px;
+  margin: 4px 0 0;
+  opacity: .8;
+}
+
+
 /* Print — A4 fit */
 @page{ size: A4; margin: 0; }
 @media print{
@@ -176,14 +201,13 @@ button.add-row{background:#fff;color:var(--brand);border:1px dashed #d7cabc}
   }
   .decor-circle{ top: -52mm; right: -52mm; width: 160mm; height: 160mm; }
   .decor-blob{ top: 38mm; right: 22mm; }
-  .info, .items-wrapper, .summary, .payment-box, .invoice-note, .items, .items tbody, .items tr{ break-inside: avoid; page-break-inside: avoid; }
+  .info, .items-wrapper, .summary, .payment-box, .invoice-signature, .invoice-note, .items, .items tbody, .items tr{ break-inside: avoid; page-break-inside: avoid; }
 }
 </style>
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
-<!-- ===== Builder ===== -->
 <div class="builder">
   <div class="controls">
     <h3>Invoice Builder</h3>
@@ -194,7 +218,6 @@ button.add-row{background:#fff;color:var(--brand);border:1px dashed #d7cabc}
       <div><label>Logo (optional)</label><input id="inpLogo" type="file" accept="image/*"><div class="small">If empty, default logo path will be used.</div></div>
     </div>
 
-    <!-- ===== Customers: cards + add/edit ===== -->
     <div style="margin-top:14px">
       <div class="row" style="justify-content:space-between;align-items:center">
         <label style="margin:0">Customers (pick to fill form & Billing)</label>
@@ -229,7 +252,6 @@ button.add-row{background:#fff;color:var(--brand);border:1px dashed #d7cabc}
       </div>
     </div>
 
-    <!-- ===== Billing / Meta ===== -->
     <div class="grid cols-3" style="margin-top:10px">
       <div><label>Billing to (Name)</label><input id="inpBillName" type="text" value="Name surname"></div>
       <div><label>Billing Address</label><input id="inpBillAddr" type="text" value="Street 123. California"></div>
@@ -259,9 +281,11 @@ button.add-row{background:#fff;color:var(--brand);border:1px dashed #d7cabc}
       <div><label>VAT (%)</label><input id="inpVAT" type="number" value="10" min="0" step="0.1"></div>
       <div><label>Note (footer line 1)</label><input id="inpNote1" type="text" value="Thank you for choosing Onetwentysix Verse as your creative partner."></div>
       <div><label>Wish (footer line 2)</label><input id="inpNote2" type="text" value="We wish you continued success and growth — let’s build something remarkable together!"></div>
+      
+      <div><label>Tên Người Ký</label><input id="inpSignName" type="text" value="Phan Ngọc Thịnh"></div>
+      <div><label>Chức Danh Người Ký</label><input id="inpSignTitle" type="text" value="Creative Director"></div>
     </div>
 
-    <!-- ===== Payment methods ===== -->
     <div style="margin-top:12px">
       <label>Payment Methods (tick to show in invoice)</label>
       <div id="pmList" class="card-list"></div>
@@ -277,7 +301,6 @@ button.add-row{background:#fff;color:var(--brand);border:1px dashed #d7cabc}
         <label style="display:flex;gap:6px;align-items:center"><input type="radio" name="pmType" value="qr" class="pick"> QR</label>
       </div>
 
-      <!-- BANK form -->
       <div id="addBank" class="grid cols-3" style="margin-top:8px">
         <div><label>Label</label><input id="addBankLabel" placeholder="Vietcombank | VND"></div>
         <div><label>Beneficiary</label><input id="addBankName" placeholder="Account holder"></div>
@@ -287,7 +310,6 @@ button.add-row{background:#fff;color:var(--brand);border:1px dashed #d7cabc}
         <div><label>Currency</label><input id="addBankCurr" placeholder="VND"></div>
       </div>
 
-      <!-- QR form -->
       <div id="addQR" class="grid cols-3" style="display:none;margin-top:8px">
         <div><label>Label</label><input id="addQrLabel" placeholder="PayPal QR"></div>
         <div><label>Note</label><input id="addQrNote" placeholder="Scan to pay"></div>
@@ -322,7 +344,6 @@ button.add-row{background:#fff;color:var(--brand);border:1px dashed #d7cabc}
   </div>
 </div>
 
-<!-- ===== Invoice (Review) ===== -->
 <div id="invoice" class="invoice-wrapper">
   <div class="decor decor-circle"></div>
   <div class="decor decor-blob"></div>
@@ -377,12 +398,18 @@ button.add-row{background:#fff;color:var(--brand);border:1px dashed #d7cabc}
         <h4>Bank Transfer / Methods</h4>
         <div id="invBankList" class="bank-list"></div>
       </div>
-      <div class="pay-col">
+      <div id="qrPayCol" class="pay-col">
         <h4>QR (Scan to Pay)</h4>
         <div id="invQRList" class="qr-list"></div>
         <p class="small" style="margin-top:6px">Open app/camera to scan QR.</p>
       </div>
     </div>
+  </section>
+
+  <section class="invoice-signature">
+    <div class="signature-line"></div>
+    <p id="signName" class="signature-name"></p>
+    <p id="signTitle" class="signature-title"></p>
   </section>
 
   <footer class="invoice-note" style="margin-top:26px;text-align:center;border-top:1px solid #eadfce;padding-top:16px;color:var(--ink)">
@@ -570,7 +597,7 @@ function renderPaymentCards(){
     const main = document.createElement('div'); main.className='card-main';
     const title = document.createElement('div'); title.className='card-title';
     title.innerHTML = `<span>${pm.label || pm.bankName || (pm.type==='qr'?'QR':'Bank')}</span>
-                       <span class="card-badge">${pm.type.toUpperCase()}</span>`;
+                                <span class="card-badge">${pm.type.toUpperCase()}</span>`;
 
     const meta = document.createElement('div'); meta.className='card-meta';
     if(pm.type==='bank'){
@@ -724,7 +751,7 @@ function fileToDataURL(file){
   });
 }
 
-/* ========== Payment preview (unchanged) ========= */
+/* ========== Payment preview (UPDATED) ========= */
 function renderPaymentPreview(){
   const ids = DB.settings.lastPaymentMethodIds || [];
   const list = listPaymentMethods().filter(p=>ids.includes(p.id));
@@ -763,6 +790,12 @@ function renderPaymentPreview(){
     const cap = document.createElement('div'); cap.className='qr-caption'; cap.textContent = q.label;
     card.appendChild(img); card.appendChild(cap); qrWrap.appendChild(card);
   });
+  
+  // Conditionally hide QR column
+  const qrCol = document.getElementById('qrPayCol');
+  if (qrCol) {
+    qrCol.style.display = qrs.length > 0 ? '' : 'none';
+  }
 }
 
 /* ========== Items / meta ========= */
@@ -818,6 +851,10 @@ function applyFields(){
   const d=document.getElementById('inpDate').value; if(d){const dt=new Date(d); document.getElementById('invDate').textContent=dt.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});}
   document.getElementById('note1').innerHTML=(document.getElementById('inpNote1').value||'').replace(/\n/g,'<br>');
   document.getElementById('note2').innerHTML=(document.getElementById('inpNote2').value||'').replace(/\n/g,'<br>');
+  
+  // UPDATE SIGNATURE
+  document.getElementById('signName').textContent = document.getElementById('inpSignName').value || '';
+  document.getElementById('signTitle').textContent = document.getElementById('inpSignTitle').value || '';
 }
 function recalc(){
   const cur=document.getElementById('inpCurrency').value;
