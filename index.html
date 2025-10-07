@@ -117,9 +117,16 @@ button.add-row{background:#fff;color:var(--brand);border:1px dashed #d7cabc}
 .invoice-header{display:flex;justify-content:space-between;align-items:flex-start}
 .logo-col{display:flex;align-items:center;gap:14px;min-width:0}
 .logo{width:64px;height:64px;object-fit:contain;flex:0 0 64px;background:#fff;border-radius:10px}
-.company-info{line-height:1.2;min-width:0}
+/* UPDATED: Flexbox for balanced vertical distribution */
+.company-info{
+  min-width:0;
+  height: 64px; /* Matches the logo height */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* Distributes items vertically */
+}
 .company-name{font-size:18px;font-weight:900;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tagline{font-size:13px;margin-top:2px;opacity:.8}
+.tagline{font-size:13px;opacity:.8; margin: 0;}
 .social{text-align:right}
 .social p{margin:.25rem 0 .5rem;font-size:14px;opacity:.9}
 .icons{display:flex;gap:10px;justify-content:flex-end}
@@ -215,7 +222,10 @@ button.add-row{background:#fff;color:var(--brand);border:1px dashed #d7cabc}
     <div class="grid cols-3">
       <div><label>Company Name</label><input id="inpCompany" type="text" value="Onetwentysix Verse CO., LTD"></div>
       <div><label>Tagline</label><input id="inpTagline" type="text" value="Brand &amp; Marketing Solutions"></div>
-      <div><label>Logo (optional)</label><input id="inpLogo" type="file" accept="image/*"><div class="small">If empty, default logo path will be used.</div></div>
+      <div><label>Tax Code</label><input id="inpTaxCode" type="text" value="1212879"></div>
+    </div>
+    <div style="margin-top:12px">
+        <label>Logo (optional)</label><input id="inpLogo" type="file" accept="image/*"><div class="small">If empty, default logo path will be used.</div>
     </div>
 
     <div style="margin-top:14px">
@@ -260,7 +270,7 @@ button.add-row{background:#fff;color:var(--brand);border:1px dashed #d7cabc}
 
     <div class="grid cols-3" style="margin-top:10px">
       <div><label>Invoice #</label><input id="inpNumber" type="text" value="#0001"></div>
-      <div><label>Date</label><input id="inpDate" type="date" value="2024-02-13"></div>
+      <div><label>Date</label><input id="inpDate" type="date"></div>
       <div><label>Currency</label>
         <select id="inpCurrency">
           <option value="USD" selected>USD ($)</option>
@@ -278,7 +288,7 @@ button.add-row{background:#fff;color:var(--brand);border:1px dashed #d7cabc}
     </div>
 
     <div class="grid cols-3" style="margin-top:10px">
-      <div><label>VAT (%)</label><input id="inpVAT" type="number" value="10" min="0" step="0.1"></div>
+      <div><label>VAT (%)</label><input id="inpVAT" type="number" value="8" min="0" step="0.1"></div>
       <div><label>Note (footer line 1)</label><input id="inpNote1" type="text" value="Thank you for choosing Onetwentysix Verse as your creative partner."></div>
       <div><label>Wish (footer line 2)</label><input id="inpNote2" type="text" value="We wish you continued success and growth — let’s build something remarkable together!"></div>
       
@@ -354,6 +364,7 @@ button.add-row{background:#fff;color:var(--brand);border:1px dashed #d7cabc}
       <div class="company-info">
         <h1 id="companyName" class="company-name">Onetwentysix Verse CO., LTD</h1>
         <p id="companyTagline" class="tagline">Brand &amp; Marketing Solutions</p>
+        <p id="companyTaxCode" class="tagline"></p>
       </div>
     </div>
     <div class="social">
@@ -374,7 +385,7 @@ button.add-row{background:#fff;color:var(--brand);border:1px dashed #d7cabc}
       <p id="billTo">Name surname<br>Street 123. California</p>
     </div>
     <div><p><strong>Invoice number</strong><br><span id="invNumber">#0001</span></p></div>
-    <div><p><strong>Date</strong><br><span id="invDate">February 13, 2024</span></p></div>
+    <div><p><strong>Date</strong><br><span id="invDate"></span></p></div>
   </section>
 
   <div class="items-wrapper">
@@ -803,7 +814,7 @@ const formatMoney = (num, currency) => {
   const map={USD:{style:'currency',currency:'USD'},VND:{style:'currency',currency:'VND',minimumFractionDigits:0},GBP:{style:'currency',currency:'GBP'},AUD:{style:'currency',currency:'AUD'}};
   const opt=map[currency]||map.USD; return new Intl.NumberFormat('en-US',opt).format(num||0);
 };
-const parseNum=v=>isNaN(+v)?0:+v;
+const parseNum=v=>isNaN(parseFloat(v)) ? 0 : parseFloat(v);
 
 let items=[{desc:'Lorem ipsum dolor',price:0,qty:1}];
 
@@ -845,6 +856,17 @@ document.getElementById('btnAddRow').onclick=()=>{items.push({desc:'',price:0,qt
 function applyFields(){
   document.getElementById('companyName').textContent=document.getElementById('inpCompany').value||'Onetwentysix Verse CO., LTD';
   document.getElementById('companyTagline').textContent=document.getElementById('inpTagline').value||'';
+
+  const taxCode = document.getElementById('inpTaxCode').value.trim();
+  const taxCodeEl = document.getElementById('companyTaxCode');
+  if (taxCode) {
+      taxCodeEl.textContent = `Tax code : ${taxCode}`;
+      taxCodeEl.style.display = '';
+  } else {
+      taxCodeEl.textContent = '';
+      taxCodeEl.style.display = 'none';
+  }
+
   document.getElementById('username').textContent=document.getElementById('inpUsername').value||'';
   document.getElementById('billTo').innerHTML=(document.getElementById('inpBillName').value||'')+'<br>'+(document.getElementById('inpBillAddr').value||'');
   document.getElementById('invNumber').textContent=document.getElementById('inpNumber').value||'#0001';
@@ -866,11 +888,18 @@ function recalc(){
     tr.innerHTML=`<td>${it.desc||''}</td><td>${formatMoney(it.price||0,cur)}</td><td>${it.qty||0}</td><td>${formatMoney(line,cur)}</td>`;
     tbody.appendChild(tr);
   });
-  const vat=parseNum(document.getElementById('inpVAT').value||0);
+  const vat=parseNum(document.getElementById('inpVAT').value);
   const tax=subtotal*(vat/100); const grand=subtotal+tax;
   document.getElementById('subtotal').textContent=formatMoney(subtotal,cur);
   document.getElementById('tax').textContent=formatMoney(tax,cur);
   document.getElementById('grand').textContent=formatMoney(grand,cur);
+  
+  // Re-render item totals in editor view after currency/value change
+  itemsEditor.querySelectorAll('.item-row').forEach((row,i)=>{
+    const t=(items[i].price||0)*(items[i].qty||0);
+    row.querySelector('input[disabled]').value=formatMoney(t,cur);
+  });
+
   renderPaymentPreview();
 }
 
@@ -910,6 +939,13 @@ document.getElementById('btnPNG').addEventListener('click', async () => {
 
 /* init */
 function initApp(){
+  // Set default date to today
+  document.getElementById('inpDate').value = new Date().toISOString().slice(0, 10);
+
+  // Add event listeners for real-time updates
+  document.getElementById('inpVAT').addEventListener('input', recalc);
+  document.getElementById('inpCurrency').addEventListener('change', recalc);
+
   renderCustomerCards();
   renderPaymentCards();
   renderItemsEditor();
